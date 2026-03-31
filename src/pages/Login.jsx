@@ -1,25 +1,16 @@
-// Importa el hook useState para manejar el estado del formulario
 import { useState } from "react";
-
-// Importa el servicio de login para comunicarse con el backend
-import { login } from "../services/authService";
-
-// Importa Link y useNavigate para navegación entre páginas
+import { login, googleAuth } from "../services/authService";
 import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 
-// Componente de inicio de sesión
 function Login() {
-
-    // Hook para redireccionar después del login
     const navigate = useNavigate();
 
-    // Estado del formulario de login
     const [form, setForm] = useState({
         email: "",
         password: ""
     });
 
-    // Maneja los cambios en los inputs del formulario
     const handleChange = (e) => {
         setForm({
             ...form,
@@ -27,27 +18,41 @@ function Login() {
         });
     };
 
-    // Maneja el envío del formulario
     const handleSubmit = async (e) => {
-
-        e.preventDefault();// Evita que la página se recargue
+        e.preventDefault();
 
         try {
-            // Llama al servicio de login enviando los datos del formulario
             const data = await login(form);
 
-            // Guarda el token en sessionStorage
             sessionStorage.setItem("token", data.token);
-
-            // Guarda los datos del usuario
             sessionStorage.setItem("user", JSON.stringify(data.user));
 
-            alert("¡Login correcto!");
-
-            // Redirige al Home
-            navigate("/Home");
+            alert(data.message || "¡Login correcto!");
+            navigate("/home");
         } catch (error) {
             alert(error.response?.data?.message || "Error al iniciar sesión");
+        }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            const data = await googleAuth({
+                credential: credentialResponse.credential
+            });
+
+            if (data.requiresCedula) {
+                alert("Esta cuenta aún no está completa. Debes terminar el registro con Google desde la pantalla de registro.");
+                navigate("/register");
+                return;
+            }
+
+            sessionStorage.setItem("token", data.token);
+            sessionStorage.setItem("user", JSON.stringify(data.user));
+
+            alert(data.message || "Inicio con Google correcto");
+            navigate("/home");
+        } catch (error) {
+            alert(error.response?.data?.message || "Error al iniciar con Google");
         }
     };
 
@@ -97,16 +102,6 @@ function Login() {
                             />
                         </div>
 
-                        <p className="text-center text-sm text-slate-600">
-                            ¿No tienes una cuenta?{" "}
-                            <Link
-                                to="/register"
-                                className="font-semibold text-blue-600 hover:underline"
-                            >
-                                Regístrate aquí
-                            </Link>
-                        </p>
-
                         <button
                             type="submit"
                             className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-md transition hover:bg-blue-700"
@@ -114,6 +109,29 @@ function Login() {
                             Entrar al sistema
                         </button>
                     </form>
+
+                    <div className="my-6 flex items-center">
+                        <div className="h-px flex-1 bg-slate-300"></div>
+                        <span className="px-4 text-sm text-slate-500">o</span>
+                        <div className="h-px flex-1 bg-slate-300"></div>
+                    </div>
+
+                    <div className="flex justify-center">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={() => alert("Error al iniciar con Google")}
+                        />
+                    </div>
+
+                    <p className="mt-6 text-center text-sm text-slate-600">
+                        ¿No tienes una cuenta?{" "}
+                        <Link
+                            to="/register"
+                            className="font-semibold text-blue-600 hover:underline"
+                        >
+                            Regístrate aquí
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>
