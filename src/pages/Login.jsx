@@ -24,11 +24,28 @@ function Login() {
         try {
             const data = await login(form);
 
-            sessionStorage.setItem("token", data.token);
-            sessionStorage.setItem("user", JSON.stringify(data.user));
+            // Si el backend indica que debe pasar por 2FA,
+            // se redirige a la pantalla para verificar el código
+            if (data.requires2FA) {
+                navigate("/verificar-2fa", {
+                    state: {
+                        userId: data.userId,
+                        expiresAt: data.expiresAt
+                    }
+                });
+                return;
+            }
 
-            alert(data.message || "¡Login correcto!");
-            navigate("/home");
+            // Este bloque queda por seguridad, por si luego reutilizas el login
+            if (data.token && data.usuario) {
+                sessionStorage.setItem("token", data.token);
+                sessionStorage.setItem("user", JSON.stringify(data.usuario));
+                alert(data.message || "¡Login correcto!");
+                navigate("/home");
+                return;
+            }
+
+            alert("No se pudo completar el inicio de sesión");
         } catch (error) {
             alert(error.response?.data?.message || "Error al iniciar sesión");
         }
