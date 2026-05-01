@@ -1,13 +1,11 @@
-import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
+import { ApolloClient, InMemoryCache } from "@apollo/client";
 
-//Apollo Client
 const client = new ApolloClient({
-  uri: 'http://localhost:5000/graphql', 
+  uri: "http://localhost:5001/graphql",
   cache: new InMemoryCache(),
   headers: {
-    Authorization: `Bearer ${localStorage.getItem('token')}`, 
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
   },
 });
 
 export default client;
-
