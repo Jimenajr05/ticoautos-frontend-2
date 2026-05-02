@@ -27,42 +27,38 @@ function Register() {
     });
 
     const handleChange = async (e) => {
-        const { name, value, files } = e.target;
+    const { name, value, files } = e.target;
 
-        if (name === "profileImage") {
-            setForm({
-                ...form,
-                profileImage: files[0]
-            });
-            return;
-        }
+    if (name === "profileImage") {
+        setForm((prev) => ({
+            ...prev,
+            profileImage: files[0]
+        }));
+        return;
+    }
 
-        setForm({
-            ...form,
-            [name]: value
-        });
+    setForm((prev) => ({
+        ...prev,
+        [name]: value
+    }));
 
-        if (name === "cedula" && value.length === 9) {
-            try {
-                const data = await getPadronInfo(value);
+    if (name === "cedula" && value.length === 9) {
+        try {
+            console.log("Consultando padrón con:", value);
+            const data = await getPadronInfo(value);
+            console.log("Respuesta padrón completa:", JSON.stringify(data, null, 2));
+            console.log("name:", data.name);
+            console.log("lastName:", data.lastName);
 
-                setForm((prev) => ({
-                    ...prev,
-                    cedula: value,
-                    name: data.name || "",
-                    lastName: data.lastName || ""
-                }));
-            } catch (error) {
-                setForm((prev) => ({
-                    ...prev,
-                    cedula: value,
-                    name: "",
-                    lastName: ""
-                }));
-            }
-        }
+            setForm((prev) => ({
+                ...prev,
+                cedula: value,
+                name: data.name || "",
+                lastName: data.lastName || ""
+            }));
+        } catch (error) {
+            console.error("Error consultando padrón:", error.response?.data || error.message);
 
-        if (name === "cedula" && value.length < 9) {
             setForm((prev) => ({
                 ...prev,
                 cedula: value,
@@ -70,7 +66,17 @@ function Register() {
                 lastName: ""
             }));
         }
-    };
+    }
+
+    if (name === "cedula" && value.length < 9) {
+        setForm((prev) => ({
+            ...prev,
+            cedula: value,
+            name: "",
+            lastName: ""
+        }));
+    }
+};
 
     const handleGoogleFormChange = async (e) => {
         const { name, value } = e.target;

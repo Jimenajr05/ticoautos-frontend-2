@@ -17,9 +17,11 @@ import {
   deleteChatConversation,
 } from "../services/questionService";
 
+// OpenRouter AI para validar mensajes del chat
+import { validarMensajeChatAI } from "../services/chatAIService";
+
 // Componente principal del chat
 function Chat() {
-
   // Obtiene los parámetros de la URL
   const [searchParams] = useSearchParams();
 
@@ -169,10 +171,8 @@ function Chat() {
     }
   };
 
-
   // Se ejecuta al cargar el componente o cuando cambian parámetros importantes
   useEffect(() => {
-
     // Si no hay token, redirige al login
     if (!token) {
       alert("Debes iniciar sesión para ver tus chats.");
@@ -191,7 +191,6 @@ function Chat() {
 
   // Envía una nueva pregunta
   const handleSendQuestion = async () => {
-
     // Verifica que exista el vehículo
     if (!vehicleId) {
       alert("No se encontró el vehículo para enviar la pregunta.");
@@ -205,13 +204,29 @@ function Chat() {
     }
 
     try {
+      // Valida el mensaje con AI antes de enviarlo
+      const validacion = await validarMensajeChatAI(questionText);
+
+      // Si el mensaje contiene datos de contacto, se bloquea
+      if (!validacion.permitido) {
+        alert("Mensaje bloqueado: " + validacion.mensaje);
+        return;
+      }
+
       // Crea la pregunta
       await createQuestion(vehicleId, questionText);
+
       // Limpia el campo
       setQuestionText("");
+
       // Recarga la conversación
       await loadConversationByVehicle();
     } catch (error) {
+      if (error.response?.status === 403) {
+        alert("Mensaje bloqueado: " + error.response.data.mensaje);
+        return;
+      }
+
       alert(error.response?.data?.message || "Error al enviar pregunta.");
     }
   };
@@ -227,6 +242,15 @@ function Chat() {
     }
 
     try {
+      // Valida la respuesta con AI antes de enviarla
+      const validacion = await validarMensajeChatAI(answer);
+
+      // Si la respuesta contiene datos de contacto, se bloquea
+      if (!validacion.permitido) {
+        alert("Mensaje bloqueado: " + validacion.mensaje);
+        return;
+      }
+
       // Envía la respuesta al backend
       await answerQuestion(questionId, answer);
 
@@ -243,13 +267,17 @@ function Chat() {
         await loadConversationByVehicle();
       }
     } catch (error) {
+      if (error.response?.status === 403) {
+        alert("Mensaje bloqueado: " + error.response.data.mensaje);
+        return;
+      }
+
       alert(error.response?.data?.message || "Error al responder.");
     }
   };
 
   // Elimina una conversación completa
   const handleDeleteChat = async (vehicleIdToDelete, askedByIdToDelete) => {
-
     // Verifica que existan los datos necesarios
     if (!vehicleIdToDelete || !askedByIdToDelete) {
       alert("No se pudo eliminar el chat porque faltan datos.");
@@ -271,7 +299,6 @@ function Chat() {
       if (vehicleId && askedById) {
         navigate("/chat");
       } else {
-
         // Si está en la lista, la actualiza localmente
         setAllChats((prev) =>
           prev.filter((item) => {
@@ -479,7 +506,7 @@ function Chat() {
           </button>
         </div>
 
-         {/* Caja para enviar pregunta si el usuario no es dueño */}
+        {/* Caja para enviar pregunta si el usuario no es dueño */}
         {!isOwner && (
           <div className="mb-8">
             <textarea
