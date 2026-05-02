@@ -1,5 +1,8 @@
 // Componente para mostrar una tarjeta de un vehículo del usuario
 function MyVehicleCard({ vehicle, onEdit, onDelete, onMarkAsSold }) {
+  // REST devuelve _id, GraphQL devuelve id
+  const vehicleId = vehicle._id || vehicle.id;
+
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-2xl">
       <div className="relative">
@@ -36,21 +39,25 @@ function MyVehicleCard({ vehicle, onEdit, onDelete, onMarkAsSold }) {
             <span className="font-semibold text-slate-800">Marca:</span>{" "}
             {vehicle.brand}
           </p>
+
           <p>
             <span className="font-semibold text-slate-800">Modelo:</span>{" "}
             {vehicle.model}
           </p>
+
           <p>
             <span className="font-semibold text-slate-800">Año:</span>{" "}
             {vehicle.year}
           </p>
+
           <p>
             <span className="font-semibold text-slate-800">Precio:</span> ₡
-            {Number(vehicle.price).toLocaleString()}
+            {Number(vehicle.price || 0).toLocaleString()}
           </p>
+
           <p className="line-clamp-3">
             <span className="font-semibold text-slate-800">Descripción:</span>{" "}
-            {vehicle.description}
+            {vehicle.description || "No disponible"}
           </p>
         </div>
 
@@ -63,7 +70,7 @@ function MyVehicleCard({ vehicle, onEdit, onDelete, onMarkAsSold }) {
           </button>
 
           <button
-            onClick={() => onDelete(vehicle._id)}
+            onClick={() => onDelete(vehicleId)}
             className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
           >
             Eliminar
@@ -71,7 +78,7 @@ function MyVehicleCard({ vehicle, onEdit, onDelete, onMarkAsSold }) {
 
           {vehicle.status !== "sold" && (
             <button
-              onClick={() => onMarkAsSold(vehicle._id)}
+              onClick={() => onMarkAsSold(vehicleId)}
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               Marcar como vendido
