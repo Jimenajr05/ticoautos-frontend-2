@@ -9,7 +9,6 @@ import { getVehicleById } from "../services/vehicleService";
 
 // Componente para mostrar el detalle de un vehículo
 function VehicleDetail() {
-
   // Obtiene el id del vehículo desde la URL
   const { id } = useParams();
 
@@ -28,11 +27,14 @@ function VehicleDetail() {
   // Construye la URL pública del vehículo
   const shareUrl = `${window.location.origin}/vehicles/${id}`;
 
-  // Función para cargar el vehículo desde el backend
+  // Función para cargar el vehículo desde GraphQL
   const loadVehicle = async () => {
     try {
       setLoading(true);
+
       const data = await getVehicleById(id);
+
+      // getVehicleById devuelve { data: vehiculo }
       setVehicle(data.data);
     } catch (error) {
       console.error("Error al cargar el detalle del vehículo:", error);
@@ -53,7 +55,6 @@ function VehicleDetail() {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
 
-      // Oculta el mensaje después de 2 segundos
       setTimeout(() => {
         setCopied(false);
       }, 2000);
@@ -64,33 +65,34 @@ function VehicleDetail() {
   };
 
   // Maneja el botón para mostrar interés en el vehículo
- const handleInterestClick = () => {
+  const handleInterestClick = () => {
+    const token = sessionStorage.getItem("token");
+    const userData = sessionStorage.getItem("user");
+    const user = userData ? JSON.parse(userData) : null;
 
-  // Obtiene token y usuario guardados en sesión
-  const token = sessionStorage.getItem("token");
-  const userData = sessionStorage.getItem("user");
-  const user = userData ? JSON.parse(userData) : null;
+    if (!token || !user) {
+      alert("Debes iniciar sesión para contactar al vendedor.");
+      navigate("/login");
+      return;
+    }
 
-  // Si no hay sesión iniciada, envía al login
-  if (!token || !user) {
-    alert("Debes iniciar sesión para contactar al vendedor.");
-    navigate("/login");
-    return;
-  }
+    // GraphQL puede traer user como string o como objeto
+    const ownerId =
+      vehicle.user?._id ||
+      vehicle.usuario?._id ||
+      vehicle.user ||
+      vehicle.usuario;
 
-  // Obtiene el id del propietario del vehículo
-  const ownerId =
-    vehicle.user?._id || vehicle.usuario?._id || vehicle.user || vehicle.usuario;
+    if (user._id === ownerId || user.id === ownerId) {
+      alert("No puedes iniciar un chat con tu propio vehículo.");
+      return;
+    }
 
-  // Evita que el dueño se escriba a sí mismo
-  if (user._id === ownerId) {
-    alert("No puedes iniciar un chat con tu propio vehículo.");
-    return;
-  }
+    // GraphQL devuelve id, REST puede devolver _id
+    const vehicleRealId = vehicle._id || vehicle.id;
 
-  // Navega al chat enviando el id del vehículo y el id del usuario interesado
-  navigate(`/chat?vehicleId=${vehicle._id}&askedBy=${user._id}`);
-};
+    navigate(`/chat?vehicleId=${vehicleRealId}&askedBy=${user._id || user.id}`);
+  };
 
   // Vista mientras carga la información
   if (loading) {
@@ -105,6 +107,7 @@ function VehicleDetail() {
     );
   }
 
+  // Vista si no se encuentra el vehículo
   if (!vehicle) {
     return (
       <div className="min-h-screen bg-slate-100 px-6 py-10">
@@ -112,6 +115,7 @@ function VehicleDetail() {
           <h2 className="text-2xl font-bold text-slate-800">
             Vehículo no encontrado
           </h2>
+
           <Link
             to="/"
             className="mt-4 inline-block rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
@@ -122,6 +126,9 @@ function VehicleDetail() {
       </div>
     );
   }
+
+  // Verifica si el usuario del vehículo viene como objeto o solo como ID
+  const ownerIsObject = typeof vehicle.user === "object" && vehicle.user !== null;
 
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-10">
@@ -155,6 +162,7 @@ function VehicleDetail() {
               <h1 className="text-3xl font-bold text-slate-900">
                 {vehicle.title}
               </h1>
+
               <span
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${
                   vehicle.status === "sold"
@@ -174,16 +182,20 @@ function VehicleDetail() {
               <p>
                 <span className="font-semibold">Marca:</span> {vehicle.brand}
               </p>
+
               <p>
                 <span className="font-semibold">Modelo:</span> {vehicle.model}
               </p>
+
               <p>
                 <span className="font-semibold">Año:</span> {vehicle.year}
               </p>
+
               <p>
                 <span className="font-semibold">Estado:</span>{" "}
                 {vehicle.status === "sold" ? "Vendido" : "Disponible"}
               </p>
+
               <p>
                 <span className="font-semibold">Descripción:</span>{" "}
                 {vehicle.description || "No disponible"}
@@ -195,28 +207,47 @@ function VehicleDetail() {
                 Información del propietario
               </h2>
 
-              <div className="flex items-center gap-4">
-                {vehicle.user?.profileImage ? (
-                  <img
-                    src={`http://localhost:3000${vehicle.user.profileImage}`}
-                    alt={vehicle.user.name}
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-300 font-bold text-slate-700">
-                    {vehicle.user?.name?.charAt(0) || "U"}
-                  </div>
-                )}
+              {ownerIsObject ? (
+                <div className="flex items-center gap-4">
+                  {vehicle.user?.profileImage ? (
+                    <img
+                      src={`http://localhost:3000${vehicle.user.profileImage}`}
+                      alt={vehicle.user.name}
+                      className="h-16 w-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-300 font-bold text-slate-700">
+                      {vehicle.user?.name?.charAt(0) || "U"}
+                    </div>
+                  )}
 
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    {vehicle.user?.name} {vehicle.user?.lastName}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    Propietario del vehículo
-                  </p>
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {vehicle.user?.name} {vehicle.user?.lastName}
+                    </p>
+
+                    <p className="text-sm text-slate-500">
+                      Propietario del vehículo
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-300 font-bold text-slate-700">
+                    U
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Propietario registrado
+                    </p>
+
+                    <p className="text-sm text-slate-500">
+                      Información cargada mediante GraphQL
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-8">
