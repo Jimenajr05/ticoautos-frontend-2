@@ -13,6 +13,7 @@ function Verify2FA() {
     const [loading, setLoading] = useState(false);
     const [resending, setResending] = useState(false);
     const [timeLeft, setTimeLeft] = useState("");
+    const [errorMsg, setErrorMsg] = useState("");
 
     useEffect(() => {
         if (!userId) {
@@ -47,6 +48,7 @@ function Verify2FA() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setErrorMsg("");
 
         try {
             setLoading(true);
@@ -59,16 +61,16 @@ function Verify2FA() {
             sessionStorage.setItem("token", data.token);
             sessionStorage.setItem("user", JSON.stringify(data.usuario));
 
-            alert(data.message || "Código verificado correctamente");
             navigate("/home");
         } catch (error) {
-            alert(error.response?.data?.message || "Error al verificar el código");
+            setErrorMsg(error.response?.data?.message || "Error al verificar el código");
         } finally {
             setLoading(false);
         }
     };
 
     const handleResend = async () => {
+        setErrorMsg("");
         try {
             setResending(true);
 
@@ -76,9 +78,8 @@ function Verify2FA() {
                 userId
             });
 
-            alert(data.message || "Código reenviado correctamente");
-        } catch (error) {
-            alert(error.response?.data?.message || "Error al reenviar el código");
+            } catch (error) {
+            setErrorMsg(error.response?.data?.message || "Error al reenviar el código");
         } finally {
             setResending(false);
         }
@@ -133,6 +134,12 @@ function Verify2FA() {
                 >
                     {resending ? "Reenviando..." : "Reenviar código"}
                 </button>
+
+                {errorMsg && (
+                    <div className="mt-4 rounded-xl bg-red-50 p-4 text-center text-sm font-medium text-red-600">
+                        {errorMsg}
+                    </div>
+                )}
             </div>
         </div>
     );

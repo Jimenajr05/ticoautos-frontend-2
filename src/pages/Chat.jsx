@@ -83,6 +83,9 @@ function Chat() {
   // Mensajes para respuestas del dueño
   const [answerNotices, setAnswerNotices] = useState({});
 
+  // Estado para el cuadro de eliminación de chat
+  const [chatToDelete, setChatToDelete] = useState(null);
+
   useEffect(() => {
     if (!chatBlockKey) return;
 
@@ -429,7 +432,7 @@ function Chat() {
     }
   };
 
-  const handleDeleteChat = async (vehicleIdToDelete, askedByIdToDelete) => {
+  const handleDeleteChat = (vehicleIdToDelete, askedByIdToDelete) => {
     if (!vehicleIdToDelete || !askedByIdToDelete) {
       setChatNotice({
         type: "error",
@@ -437,19 +440,23 @@ function Chat() {
       });
       return;
     }
+    setChatToDelete({ vehicleId: vehicleIdToDelete, askedBy: askedByIdToDelete });
+  };
 
-    const confirmDelete = window.confirm(
-      "¿Seguro que deseas eliminar este chat y todo su historial?"
-    );
-
-    if (!confirmDelete) return;
+  const executeDeleteChat = async () => {
+    if (!chatToDelete) return;
 
     try {
-      await deleteChatConversation(vehicleIdToDelete, askedByIdToDelete);
+      await deleteChatConversation(chatToDelete.vehicleId, chatToDelete.askedBy);
 
       if (chatBlockKey) {
         sessionStorage.removeItem(chatBlockKey);
       }
+
+      const vehicleIdToDelete = chatToDelete.vehicleId;
+      const askedByIdToDelete = chatToDelete.askedBy;
+
+      setChatToDelete(null);
 
       if (vehicleId && askedById) {
         navigate("/chat");
@@ -473,6 +480,7 @@ function Chat() {
         type: "error",
         text: error.response?.data?.message || "Error al eliminar el chat.",
       });
+      setChatToDelete(null);
     }
   };
 
@@ -496,13 +504,43 @@ function Chat() {
     );
   };
 
+  const DeleteChatModal = () => {
+    if (!chatToDelete) return null;
+
+    return (
+      <div className="fixed top-6 right-6 z-50 w-96 rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200 animate-fade-in-down">
+        <h3 className="mb-2 text-lg font-bold text-slate-900 border-b border-slate-100 pb-2">
+          Eliminar chat
+        </h3>
+        <p className="mb-5 text-sm text-slate-600 mt-2">
+          ¿Seguro que deseas eliminar este chat y todo su historial?
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setChatToDelete(null)}
+            className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={executeDeleteChat}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-red-200 transition hover:bg-red-700"
+          >
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <div className="p-10 text-center">Cargando chat...</div>;
   }
 
   if (!vehicleId || !askedById) {
     return (
-      <div className="min-h-screen bg-slate-100 px-6 py-10">
+      <div className="min-h-screen bg-slate-100 px-6 py-10 relative">
+        <DeleteChatModal />
         <div className="mx-auto max-w-5xl rounded-3xl bg-white p-8 shadow-lg">
           <h1 className="mb-6 text-3xl font-bold text-slate-900">
             Chat con usuarios
@@ -646,7 +684,8 @@ function Chat() {
   const inputDisabled = !canAsk || chatBlocked || sendingMessage;
 
   return (
-    <div className="min-h-screen bg-slate-100 px-6 py-10">
+    <div className="min-h-screen bg-slate-100 px-6 py-10 relative">
+      <DeleteChatModal />
       <div className="mx-auto max-w-5xl rounded-3xl bg-white p-8 shadow-lg">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
