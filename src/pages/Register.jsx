@@ -3,6 +3,10 @@ import { register, getPadronInfo, googleAuth } from "../services/authService";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 
+/**
+ * Permite la creación de nuevas cuentas de forma local o por Google
+ * Incluye validación de identidad en tiempo real consultando la cédula en el padron.
+*/
 function Register() {
     const navigate = useNavigate();
 
@@ -30,39 +34,55 @@ function Register() {
     const [googleErrorMsg, setGoogleErrorMsg] = useState("");
     const [googleCompleteErrorMsg, setGoogleCompleteErrorMsg] = useState("");
 
+    /**
+     * Maneja los cambios en los campos del formulario de registro principal.
+     * Actualizar el estado, hay una lógica donde:
+     * Si el usuario escribe una cédula de exactamente 9 dígitos, consulta automáticamente
+     * la API del padrón para rellenar los campos "name" y "lastName".
+     */
     const handleChange = async (e) => {
-    const { name, value, files } = e.target;
+        const { name, value, files } = e.target;
 
-    if (name === "profileImage") {
-        setForm((prev) => ({
-            ...prev,
-            profileImage: files[0]
-        }));
-        return;
-    }
-
-    setForm((prev) => ({
-        ...prev,
-        [name]: value
-    }));
-
-    if (name === "cedula" && value.length === 9) {
-        try {
-            console.log("Consultando padrón con:", value);
-            const data = await getPadronInfo(value);
-            console.log("Respuesta padrón completa:", JSON.stringify(data, null, 2));
-            console.log("name:", data.name);
-            console.log("lastName:", data.lastName);
-
+        if (name === "profileImage") {
             setForm((prev) => ({
                 ...prev,
-                cedula: value,
-                name: data.name || "",
-                lastName: data.lastName || ""
+                profileImage: files[0]
             }));
-        } catch (error) {
-            console.error("Error consultando padrón:", error.response?.data || error.message);
+            return;
+        }
 
+        setForm((prev) => ({
+            ...prev,
+            [name]: value
+        }));
+
+        if (name === "cedula" && value.length === 9) {
+            try {
+                console.log("Consultando padrón con:", value);
+                const data = await getPadronInfo(value);
+                console.log("Respuesta padrón completa:", JSON.stringify(data, null, 2));
+                console.log("name:", data.name);
+                console.log("lastName:", data.lastName);
+
+                setForm((prev) => ({
+                    ...prev,
+                    cedula: value,
+                    name: data.name || "",
+                    lastName: data.lastName || ""
+                }));
+            } catch (error) {
+                console.error("Error consultando padrón:", error.response?.data || error.message);
+
+                setForm((prev) => ({
+                    ...prev,
+                    cedula: value,
+                    name: "",
+                    lastName: ""
+                }));
+            }
+        }
+
+        if (name === "cedula" && value.length < 9) {
             setForm((prev) => ({
                 ...prev,
                 cedula: value,
@@ -70,17 +90,7 @@ function Register() {
                 lastName: ""
             }));
         }
-    }
-
-    if (name === "cedula" && value.length < 9) {
-        setForm((prev) => ({
-            ...prev,
-            cedula: value,
-            name: "",
-            lastName: ""
-        }));
-    }
-};
+    };
 
     const handleGoogleFormChange = async (e) => {
         const { name, value } = e.target;
@@ -120,6 +130,11 @@ function Register() {
         }
     };
 
+    /**
+     * Maneja el envío del formulario de registro estándar.
+     * Prepara un objeto FormData (incluyendo archivos de imagen si existen) y
+     * lo envía al backend para crear la cuenta. Si tiene éxito, redirige al Login.
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
 
