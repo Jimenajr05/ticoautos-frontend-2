@@ -24,6 +24,9 @@ function VehicleDetail() {
   // Estado para mostrar mensaje cuando se copia el enlace
   const [copied, setCopied] = useState(false);
 
+  // Estado para mostrar mensajes de error
+  const [errorMsg, setErrorMsg] = useState("");
+
   // Construye la URL pública del vehículo
   const shareUrl = `${window.location.origin}/vehicles/${id}`;
 
@@ -60,19 +63,20 @@ function VehicleDetail() {
       }, 2000);
     } catch (error) {
       console.error("Error al copiar el enlace:", error);
-      alert("No se pudo copiar el enlace.");
+      setErrorMsg("No se pudo copiar el enlace.");
     }
   };
 
   // Maneja el botón para mostrar interés en el vehículo
   const handleInterestClick = () => {
+    setErrorMsg("");
     const token = sessionStorage.getItem("token");
     const userData = sessionStorage.getItem("user");
     const user = userData ? JSON.parse(userData) : null;
 
     if (!token || !user) {
-      alert("Debes iniciar sesión para contactar al vendedor.");
-      navigate("/login");
+      setErrorMsg("Debes iniciar sesión para contactar al vendedor.");
+      setTimeout(() => navigate("/login"), 2000);
       return;
     }
 
@@ -84,7 +88,7 @@ function VehicleDetail() {
       vehicle.usuario;
 
     if (user._id === ownerId || user.id === ownerId) {
-      alert("No puedes iniciar un chat con tu propio vehículo.");
+      setErrorMsg("No puedes iniciar un chat con tu propio vehículo.");
       return;
     }
 
@@ -253,10 +257,16 @@ function VehicleDetail() {
             <div className="mt-8">
               <button
                 onClick={handleInterestClick}
-                className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
+                className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow transition hover:bg-blue-700"
               >
                 ¿Te interesa este vehículo?
               </button>
+
+              {errorMsg && (
+                <div className="mt-4 rounded-xl bg-red-50 p-4 text-center text-sm font-medium text-red-600">
+                  {errorMsg}
+                </div>
+              )}
             </div>
 
             <div className="mt-8 rounded-2xl bg-slate-50 p-5">

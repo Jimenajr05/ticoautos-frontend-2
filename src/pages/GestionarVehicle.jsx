@@ -39,13 +39,23 @@ function GestionarVehicle() {
   // Lista de vehículos del usuario
   const [vehicles, setVehicles] = useState([]);
 
-  // Guarda el id del vehículo que se está editando
   const [editingVehicleId, setEditingVehicleId] = useState(null);
+
+  // Guarda el id del vehículo que se desea eliminar (para mostrar el cuadro)
+  const [vehicleToDelete, setVehicleToDelete] = useState(null);
+
+  // Estado para guardar el mensaje de error del formulario
+  const [formErrorMsg, setFormErrorMsg] = useState("");
+
+  // Estado para mostrar/ocultar el formulario
+  const [showForm, setShowForm] = useState(false);
 
   // Resetea el formulario
   const resetForm = () => {
     setForm(initialForm);
     setEditingVehicleId(null);
+    setFormErrorMsg("");
+    setShowForm(false);
   };
 
   // Carga los vehículos del usuario desde el backend
@@ -95,23 +105,25 @@ function GestionarVehicle() {
 
   // Valida los datos del formulario antes de enviarlos
   const validateForm = () => {
+    setFormErrorMsg("");
+
     if (!form.title.trim()) {
-      alert("El título del vehículo es obligatorio.");
+      setFormErrorMsg("El título del vehículo es obligatorio.");
       return false;
     }
 
     if (!form.brand.trim()) {
-      alert("La marca del vehículo es obligatoria.");
+      setFormErrorMsg("La marca del vehículo es obligatoria.");
       return false;
     }
 
     if (!form.model.trim()) {
-      alert("El modelo del vehículo es obligatorio.");
+      setFormErrorMsg("El modelo del vehículo es obligatorio.");
       return false;
     }
 
     if (!form.year) {
-      alert("El año del vehículo es obligatorio.");
+      setFormErrorMsg("El año del vehículo es obligatorio.");
       return false;
     }
 
@@ -120,29 +132,29 @@ function GestionarVehicle() {
       Number(form.year) < 1900 ||
       Number(form.year) > new Date().getFullYear()
     ) {
-      alert("Ingresa un año válido.");
+      setFormErrorMsg("Ingresa un año válido.");
       return false;
     }
 
     if (!form.price) {
-      alert("El precio del vehículo es obligatorio.");
+      setFormErrorMsg("El precio del vehículo es obligatorio.");
       return false;
     }
 
     // Verifica que el precio sea mayor que 0
     if (Number(form.price) <= 0) {
-      alert("El precio debe ser mayor a 0.");
+      setFormErrorMsg("El precio debe ser mayor a 0.");
       return false;
     }
 
     if (!form.description.trim()) {
-      alert("La descripción del vehículo es obligatoria.");
+      setFormErrorMsg("La descripción del vehículo es obligatoria.");
       return false;
     }
 
     // Si se está creando un vehículo nuevo exige imagen
     if (!editingVehicleId && (!form.vehicleImage || form.vehicleImage.length === 0)) {
-      alert("Debes subir al menos una foto del vehículo.");
+      setFormErrorMsg("Debes subir al menos una foto del vehículo.");
       return false;
     }
 
@@ -185,12 +197,10 @@ function GestionarVehicle() {
       // Si se está editando un vehículo
       if (editingVehicleId) {
         await updateVehicle(editingVehicleId, formData);
-        alert("Vehículo actualizado correctamente.");
-      } else {
+        } else {
         // Si es un vehículo nuevo
         await createVehicle(formData);
-        alert("Vehículo creado correctamente.");
-      }
+        }
 
       // Limpia el formulario y recarga la lista
       resetForm();
@@ -202,12 +212,13 @@ function GestionarVehicle() {
         error?.response?.data?.message ||
         "Ocurrió un error al guardar el vehículo.";
 
-      alert(message);
+      setFormErrorMsg(message);
     }
   };
 
   // Carga los datos de un vehículo en el formulario para editarlo
   const handleEdit = (vehicle) => {
+    setFormErrorMsg("");
     setForm({
       title: vehicle.title || "",
       brand: vehicle.brand || "",
@@ -219,26 +230,29 @@ function GestionarVehicle() {
     });
 
     setEditingVehicleId(vehicle._id);
+    setShowForm(true);
 
     // Hace scroll al inicio de la página
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Elimina un vehículo
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm(
-      "¿Seguro que deseas eliminar este vehículo?"
-    );
+  // Muestra el cuadro de confirmación para eliminar un vehículo
+  const handleDelete = (id) => {
+    setVehicleToDelete(id);
+  };
 
-    if (!confirmDelete) return;
+  // Ejecuta la eliminación real del vehículo
+  const executeDelete = async () => {
+    if (!vehicleToDelete) return;
 
     try {
-      await deleteVehicle(id);
-      alert("Vehículo eliminado correctamente.");
+      await deleteVehicle(vehicleToDelete);
       await loadVehicles();
+      setVehicleToDelete(null);
     } catch (error) {
       console.error("Error al eliminar vehículo:", error);
       alert(error.response?.data?.message || "Error al eliminar vehículo.");
+      setVehicleToDelete(null);
     }
   };
 
@@ -246,7 +260,6 @@ function GestionarVehicle() {
   const handleMarkAsSold = async (id) => {
     try {
       await markVehicleAsSold(id);
-      alert("Vehículo marcado como vendido.");
       await loadVehicles();
     } catch (error) {
       console.error("Error al marcar como vendido:", error);
@@ -257,7 +270,34 @@ function GestionarVehicle() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 px-6 py-10">
+    <div className="min-h-screen bg-slate-100 px-6 py-10 relative">
+      
+      {/* Cuadro de confirmación en la esquina superior derecha */}
+      {vehicleToDelete && (
+        <div className="fixed top-6 right-6 z-50 w-80 rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200">
+          <h3 className="mb-2 text-lg font-bold text-slate-900 border-b border-slate-100 pb-2">
+            Eliminar vehículo
+          </h3>
+          <p className="mb-5 text-sm text-slate-600 mt-2">
+            ¿Seguro que deseas eliminar esta publicación?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setVehicleToDelete(null)}
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={executeDelete}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-red-200 transition hover:bg-red-700"
+            >
+              Sí, eliminar
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-7xl">
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-slate-900">
@@ -268,14 +308,26 @@ function GestionarVehicle() {
           </p>
         </div>
 
-        {/* Formulario de vehículo */}
-        <VehicleForm
-          form={form}
-          editingVehicleId={editingVehicleId}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          onCancel={resetForm}
-        />
+        {/* Sección del Formulario o Botón */}
+        {!showForm ? (
+          <div className="mb-10">
+            <button
+              onClick={() => setShowForm(true)}
+              className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700"
+            >
+              + Crear nuevo vehículo
+            </button>
+          </div>
+        ) : (
+          <VehicleForm
+            form={form}
+            editingVehicleId={editingVehicleId}
+            onChange={handleChange}
+            onSubmit={handleSubmit}
+            onCancel={resetForm}
+            errorMsg={formErrorMsg}
+          />
+        )}
 
         <div className="mb-6 flex items-center justify-between">
           <div>
