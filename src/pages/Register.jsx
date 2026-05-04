@@ -26,6 +26,10 @@ function Register() {
         lastName: ""
     });
 
+    const [errorMsg, setErrorMsg] = useState("");
+    const [googleErrorMsg, setGoogleErrorMsg] = useState("");
+    const [googleCompleteErrorMsg, setGoogleCompleteErrorMsg] = useState("");
+
     const handleChange = async (e) => {
     const { name, value, files } = e.target;
 
@@ -133,10 +137,9 @@ function Register() {
 
             const data = await register(formData);
 
-            alert(data.message || "Registro correcto");
             navigate("/login");
         } catch (error) {
-            alert(error.response?.data?.message || "Error al registrar");
+            setErrorMsg(error.response?.data?.message || "Error al registrar");
         }
     };
 
@@ -155,10 +158,9 @@ function Register() {
 
             sessionStorage.setItem("token", data.token);
             sessionStorage.setItem("user", JSON.stringify(data.user));
-            alert(data.message || "Inicio con Google correcto");
             navigate("/home");
         } catch (error) {
-            alert(error.response?.data?.message || "Error al iniciar con Google");
+            setGoogleErrorMsg(error.response?.data?.message || "Error al iniciar con Google");
         }
     };
 
@@ -174,10 +176,9 @@ function Register() {
 
             sessionStorage.setItem("token", data.token);
             sessionStorage.setItem("user", JSON.stringify(data.user));
-            alert(data.message || "Registro con Google correcto");
             navigate("/home");
         } catch (error) {
-            alert(error.response?.data?.message || "Error al completar el registro con Google");
+            setGoogleCompleteErrorMsg(error.response?.data?.message || "Error al completar el registro con Google");
         }
     };
 
@@ -288,6 +289,12 @@ function Register() {
                         />
                     </div>
 
+                    {errorMsg && (
+                        <div className="md:col-span-2 rounded-xl bg-red-50 p-4 text-sm text-center text-red-600 font-medium">
+                            {errorMsg}
+                        </div>
+                    )}
+
                     <div className="md:col-span-2">
                         <button
                             type="submit"
@@ -297,10 +304,16 @@ function Register() {
                         </button>
                     </div>
 
+                    {googleErrorMsg && (
+                        <div className="md:col-span-2 rounded-xl bg-red-50 p-4 text-sm text-center text-red-600 font-medium">
+                            {googleErrorMsg}
+                        </div>
+                    )}
+
                     <div className="md:col-span-2 flex justify-center">
                         <GoogleLogin
                             onSuccess={handleGoogleSuccess}
-                            onError={() => alert("Error al iniciar con Google")}
+                            onError={() => setGoogleErrorMsg("Error al iniciar con Google")}
                         />
                     </div>
 
@@ -380,6 +393,12 @@ function Register() {
                                 className="w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3"
                             />
                         </div>
+
+                        {googleCompleteErrorMsg && (
+                            <div className="md:col-span-2 rounded-xl bg-red-50 p-4 text-sm text-center text-red-600 font-medium">
+                                {googleCompleteErrorMsg}
+                            </div>
+                        )}
 
                         <div className="md:col-span-2">
                             <button

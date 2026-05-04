@@ -11,6 +11,9 @@ function Login() {
         password: ""
     });
 
+    const [errorMsg, setErrorMsg] = useState("");
+    const [googleErrorMsg, setGoogleErrorMsg] = useState("");
+
     const handleChange = (e) => {
         setForm({
             ...form,
@@ -20,6 +23,7 @@ function Login() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setErrorMsg("");
 
         try {
             const data = await login(form);
@@ -40,36 +44,37 @@ function Login() {
             if (data.token && data.usuario) {
                 sessionStorage.setItem("token", data.token);
                 sessionStorage.setItem("user", JSON.stringify(data.usuario));
-                alert(data.message || "¡Login correcto!");
                 navigate("/home");
                 return;
             }
 
-            alert("No se pudo completar el inicio de sesión");
+            setErrorMsg("No se pudo completar el inicio de sesión");
         } catch (error) {
-            alert(error.response?.data?.message || "Error al iniciar sesión");
+            setErrorMsg(error.response?.data?.message || "Error al iniciar sesión");
         }
     };
 
     const handleGoogleSuccess = async (credentialResponse) => {
+        setGoogleErrorMsg("");
         try {
             const data = await googleAuth({
                 credential: credentialResponse.credential
             });
 
             if (data.requiresCedula) {
-                alert("Esta cuenta aún no está completa. Debes terminar el registro con Google desde la pantalla de registro.");
-                navigate("/register");
+                setGoogleErrorMsg("Esta cuenta aún no está completa. Debes terminar el registro con Google desde la pantalla de registro.");
+                setTimeout(() => {
+                    navigate("/register");
+                }, 3500);
                 return;
             }
 
             sessionStorage.setItem("token", data.token);
             sessionStorage.setItem("user", JSON.stringify(data.user));
 
-            alert(data.message || "Inicio con Google correcto");
             navigate("/home");
         } catch (error) {
-            alert(error.response?.data?.message || "Error al iniciar con Google");
+            setGoogleErrorMsg(error.response?.data?.message || "Error al iniciar con Google");
         }
     };
 
@@ -119,6 +124,12 @@ function Login() {
                             />
                         </div>
 
+                        {errorMsg && (
+                            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                                {errorMsg}
+                            </div>
+                        )}
+
                         <button
                             type="submit"
                             className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-md transition hover:bg-blue-700"
@@ -133,10 +144,16 @@ function Login() {
                         <div className="h-px flex-1 bg-slate-300"></div>
                     </div>
 
+                    {googleErrorMsg && (
+                        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-center text-red-600">
+                            {googleErrorMsg}
+                        </div>
+                    )}
+
                     <div className="flex justify-center">
                         <GoogleLogin
                             onSuccess={handleGoogleSuccess}
-                            onError={() => alert("Error al iniciar con Google")}
+                            onError={() => setGoogleErrorMsg("Error al iniciar con Google")}
                         />
                     </div>
 
