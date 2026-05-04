@@ -3,6 +3,12 @@ import { login, googleAuth } from "../services/authService";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 
+/**
+ * Página de inicio de sesión.
+ * Permite a los usuarios ingresar al sistema mediante correo y contraseña
+ * O utilizando su cuenta de Google a través de OAuth2.
+ * Maneja la redirección a la verificación de (2FA) si el backend lo requiere.
+ */
 function Login() {
     const navigate = useNavigate();
 
@@ -21,6 +27,12 @@ function Login() {
         });
     };
 
+    /**
+     * Maneja el envío del formulario de inicio de sesión estándar.
+     * Envía las credenciales al backend, valida la respuesta:
+     * - Redirige a la pantalla de verificación 2FA si el sistema lo solicita.
+     * - Guarda los tokens en sesión y redirige al dashboard/home si es exitoso.
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg("");
@@ -54,6 +66,11 @@ function Login() {
         }
     };
 
+    /**
+     * Maneja la respuesta exitosa del botón de inicio de sesión de Google
+     * Envía el token de Google al backend para validar al usuario
+     * Si la cuenta es nueva, redirige a la pantalla de registro para completar datos faltantes
+     */
     const handleGoogleSuccess = async (credentialResponse) => {
         setGoogleErrorMsg("");
         try {

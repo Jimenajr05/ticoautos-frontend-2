@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { verify2FA, resend2FA } from "../services/authService";
 
+/**
+ * Componente para la pantalla de verificación de (2FA).
+ * Requiere que el usuario ingrese un código de 6 dígitos que se le envió por SMS.
+ * Tiene un temporizador para la expiración del código y una opción para reenviarlo.
+*/
 function Verify2FA() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -46,6 +51,10 @@ function Verify2FA() {
         return () => clearInterval(interval);
     }, [expiresAt]);
 
+    /**
+     * Maneja el envío del código 2FA ingresado por el usuario.
+     * Lo valida en el backend y si es correcto  guarda la sesión y redirige al home.
+    */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg("");
@@ -69,6 +78,9 @@ function Verify2FA() {
         }
     };
 
+    /**
+     * Solicita al backend que reenvíe un nuevo código SMS al usuario.
+     */
     const handleResend = async () => {
         setErrorMsg("");
         try {
@@ -78,7 +90,7 @@ function Verify2FA() {
                 userId
             });
 
-            } catch (error) {
+        } catch (error) {
             setErrorMsg(error.response?.data?.message || "Error al reenviar el código");
         } finally {
             setResending(false);
