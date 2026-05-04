@@ -12,7 +12,6 @@ import Pagination from "../components/Home/Pagination";
 
 // Componente principal de la página pública
 function PublicHome() {
-
   // Estado para guardar los vehículos obtenidos
   const [vehicles, setVehicles] = useState([]);
 
@@ -23,7 +22,7 @@ function PublicHome() {
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
-    totalVehicles: 0
+    totalVehicles: 0,
   });
 
   // Guarda los filtros actuales aplicados
@@ -32,39 +31,45 @@ function PublicHome() {
   // Función para cargar vehículos con filtros y paginación
   const loadVehicles = async (filters = currentFilters, page = 1) => {
     try {
-
       // Activa el estado de carga
       setLoading(true);
 
       // Combina filtros con paginación
       const finalFilters = { ...filters, page, limit: 6 };
 
-       // Llama al servicio del backend
+      // Llama al servicio de vehículos
       const data = await getVehicles(finalFilters);
 
       // Guarda los vehículos obtenidos
-      setVehicles(data.data || []);
+      const vehiclesData = data.data || [];
+      setVehicles(vehiclesData);
 
       // Actualiza la información de paginación
       setPagination({
-        currentPage: data.currentPage || 1,
+        currentPage: data.currentPage || page,
         totalPages: data.totalPages || 1,
-        totalVehicles: data.totalVehicles || 0
+        totalVehicles: data.totalVehicles || vehiclesData.length,
       });
 
       // Guarda los filtros actuales
       setCurrentFilters(filters);
-
     } catch (error) {
       console.error("Error al cargar vehículos:", error);
+
       // Si ocurre un error limpia la lista
       setVehicles([]);
-    } finally {
 
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        totalVehicles: 0,
+      });
+    } finally {
       // Finaliza el estado de carga
       setLoading(false);
     }
   };
+
   // Se ejecuta cuando se carga el componente
   useEffect(() => {
     // Carga los vehículos al iniciar la página
@@ -73,11 +78,9 @@ function PublicHome() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-
       <HeroSection />
 
       <div className="mx-auto max-w-7xl px-6 py-8">
-
         <VehicleFilters onFilter={(filters) => loadVehicles(filters, 1)} />
 
         <div className="mb-6 flex justify-end">
@@ -90,17 +93,18 @@ function PublicHome() {
           <div className="py-10 text-center text-slate-600">
             Cargando vehículos...
           </div>
-
         ) : vehicles.length === 0 ? (
           <div className="rounded-2xl bg-white p-8 text-center text-slate-600 shadow">
             No se encontraron vehículos con esos filtros.
           </div>
-
         ) : (
           <>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {vehicles.map((vehicle) => (
-                <VehicleCard key={vehicle._id} vehicle={vehicle} />
+                <VehicleCard
+                  key={vehicle.id || vehicle._id}
+                  vehicle={vehicle}
+                />
               ))}
             </div>
 
@@ -110,7 +114,6 @@ function PublicHome() {
             />
           </>
         )}
-
       </div>
     </div>
   );

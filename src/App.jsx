@@ -8,14 +8,14 @@ import VehicleDetail from "./pages/VehicleDetail";
 import Chat from "./pages/Chat";
 import Verify2FA from "./pages/Verify2FA";
 import Navbar from "./components/Navbar";
-import { ApolloProvider } from '@apollo/client';
+import { ApolloProvider } from "@apollo/client/react";
 
-//importar cliente de Apollo desde el archivo client.js
-import client from './services/client';  
+// importar cliente de Apollo desde el archivo client.js
+import client from "./services/client";
 
 function App() {
   return (
-    <ApolloProvider client={client}> 
+    <ApolloProvider client={client}>
       <div className="min-h-screen bg-slate-100">
         <Navbar />
 
