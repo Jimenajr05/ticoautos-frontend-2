@@ -15,18 +15,7 @@ Este proyecto fue desarrollado con **React**, **Vite**, **React Router**, **Axio
 - Axios
 - Tailwind CSS
 - JavaScript
-- HTML5
-- CSS3
-
----
-
-## Instalación de dependencias
-Durante el desarrollo del proyecto se instalaron las siguientes dependencias:
-
-- npm create vite@latest .
-- npm install axios
-- npm install react-router-dom
-- npm install -D tailwindcss @tailwindcss/vite
+- HTML5 & CSS3
 
 ---
 
@@ -82,187 +71,64 @@ ticoautos-frontend
 
 ---
 
-# Instalación y ejecución
+## Instalación y ejecución
 
 1. Clonar el repositorio
-
-```
-git clone https://github.com/Jimenajr05/ticoautos-frontend
-```
-
-2. Entrar a la carpeta del proyecto
-
-```
+```bash
+git clone https://github.com/Jimenajr05/ticoautos-frontend.git
 cd ticoautos-frontend
 ```
 
-3. Instalar dependencias
-
-```
+2. Instalar dependencias
+```bash
 npm install
 ```
 
-4. Ejecutar el proyecto en desarrollo
-
-```
+3. Ejecutar el proyecto en desarrollo
+```bash
 npm run dev
 ```
 
-El proyecto se ejecutará normalmente en:
-
-```
-http://localhost:5173
-```
+El proyecto se ejecutará normalmente en `http://localhost:5173`.
 
 ---
 
-# Conexión con el backend
+## Conexión con el backend
 
-Este frontend consume el backend mediante Axios usando rutas como:
+Este frontend consume el backend mediante Axios. El backend debe estar ejecutándose en `http://localhost:3000`.
 
-```
-http://localhost:3000/api/auth
-http://localhost:3000/api/vehicles
-http://localhost:3000/api/questions
-```
-
-Por lo tanto, el backend debe estar ejecutándose en:
-
-```
-http://localhost:3000
-```
+* Autenticación: `http://localhost:3000/api/auth`
+* Vehículos: `http://localhost:3000/api/vehicles`
+* Preguntas: `http://localhost:3000/api/questions`
 
 ---
 
-# Funcionalidades principales
+## Funcionalidades principales
 
-1. Autenticación
-
-- Registro de usuario
-- Inicio de sesión
-- Persistencia del token en sessionStorage
-- Persistencia de la información básica del usuario en sessionStorage
-
-2. Gestión de vehículos
-
-- Crear vehículo
-- Editar vehículo
-- Eliminar vehículo
-- Marcar vehículo como vendido
-- Ver lista de vehículos propios
-
-3. Búsqueda y filtrado
-
-- Filtrar por marca
-- Filtrar por modelo
-- Filtrar por año mínimo y máximo
-- Filtrar por precio mínimo y máximo
-- Filtrar por estado del vehículo
-- Paginación de resultados
-
-4. Detalle del vehículo
-
-- Visualización de información completa del vehículo
-- Información del propietario
-- Estado del vehículo
-- Copia de enlace público
-- Navegación al chat con el vendedor
-
-5. Chat entre usuarios
-
-- Enviar preguntas sobre un vehículo
-- Responder preguntas como propietario
-- Ver conversaciones activas
-- Eliminar conversaciones
-- Restricción para evitar que el dueño se escriba a sí mismo
-- Restricción para que el comprador espere respuesta antes de enviar otra pregunta
+1. **Autenticación**: Registro, inicio de sesión y persistencia en `sessionStorage`.
+2. **Gestión de vehículos**: Crear, editar, eliminar, marcar como vendido y listar vehículos propios.
+3. **Búsqueda y filtrado**: Filtros por marca, modelo, año, precio y estado, con paginación.
+4. **Detalle del vehículo**: Información completa, enlace público y botón hacia el chat.
+5. **Chat entre usuarios**: Preguntas, respuestas y gestión de conversaciones.
 
 ---
 
-# Componentes principales
-- Navbar.jsx
-- HeroSection.jsx
-- VehicleFilters.jsx
-- VehicleCard.jsx
-- Pagination.jsx
-- VehicleForm.jsx
-- MyVehicleCard.jsx
+## Manejo de sesión
+
+La aplicación utiliza `sessionStorage` para guardar el token y los datos de usuario, manteniendo la sesión activa mientras la pestaña permanezca abierta.
 
 ---
 
-# Páginas principales
-- PublicHome.jsx
-- Home.jsx
-- Login.jsx
-- Register.jsx
-- GestionarVehicle.jsx
-- VehicleDetail.jsx
-- Chat.jsx
+## Requisitos para funcionar correctamente
 
----
-
-# Servicios
-
-- authService.js
-- vehicleService.js
-- questionService.js
-
----
-
-# Manejo de sesión
-
-La aplicación utiliza sessionStorage para guardar:
-
-- token
-- user
-
-Esto permite mantener la sesión activa mientras el navegador permanezca abierto.
-
-Ejemplo:
-
-```
-sessionStorage.setItem("token", data.token);
-sessionStorage.setItem("user", JSON.stringify(data.user));
-```
-
----
-
-# Diseño de interfaz
-
-El proyecto utiliza Tailwind CSS para construir la interfaz
-
---- 
-
-# Dependencias principales
-
-## Dependencias
-
-- axios
-- react
-- react-dom
-- react-router-dom
-
-## Dependencias de desarrollo
-
-- vite
-- @vitejs/plugin-react
-- tailwindcss
-- @tailwindcss/vite
-- eslint
-
----
-
-# Requisitos para funcionar correctamente
-
-- Node.js instalado
-- npm instalado
-- Backend de TicoAutos corriendo en http://localhost:3000
+- Node.js y npm instalados
+- Backend de TicoAutos corriendo en `http://localhost:3000`
 - MongoDB funcionando desde el backend
-- Navegador web 
+- Navegador web moderno
 
 ---
 
-# Autoras
+## Autoras
 
 - María Paz Ugalde Araya
 - María Jimena Jara Rojas
