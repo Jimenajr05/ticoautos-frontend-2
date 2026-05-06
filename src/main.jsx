@@ -13,6 +13,8 @@ import App from './App';
 // Importa los estilos globales
 import './index.css';
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 // Renderiza la aplicación dentro del elemento con id "root"
 ReactDOM.createRoot(document.getElementById('root')).render(
 
@@ -22,9 +24,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     {/* Habilita el sistema de rutas en toda la aplicación */}
     <BrowserRouter>
 
-      {/* Componente principal de la app */}
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <App />
-
+    </GoogleOAuthProvider>
+    
     </BrowserRouter>
 
   </React.StrictMode>

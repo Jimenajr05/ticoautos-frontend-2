@@ -1,25 +1,25 @@
-// Importa el hook useState para manejar el estado del formulario
 import { useState } from "react";
-
-// Importa el servicio de login para comunicarse con el backend
-import { login } from "../services/authService";
-
-// Importa Link y useNavigate para navegación entre páginas
+import { login, googleAuth } from "../services/authService";
 import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 
-// Componente de inicio de sesión
+/**
+ * Página de inicio de sesión.
+ * Permite a los usuarios ingresar al sistema mediante correo y contraseña
+ * O utilizando su cuenta de Google a través de OAuth2.
+ * Maneja la redirección a la verificación de (2FA) si el backend lo requiere.
+ */
 function Login() {
-
-    // Hook para redireccionar después del login
     const navigate = useNavigate();
 
-    // Estado del formulario de login
     const [form, setForm] = useState({
         email: "",
         password: ""
     });
 
-    // Maneja los cambios en los inputs del formulario
+    const [errorMsg, setErrorMsg] = useState("");
+    const [googleErrorMsg, setGoogleErrorMsg] = useState("");
+
     const handleChange = (e) => {
         setForm({
             ...form,
@@ -27,27 +27,71 @@ function Login() {
         });
     };
 
-    // Maneja el envío del formulario
+    /**
+     * Maneja el envío del formulario de inicio de sesión estándar.
+     * Envía las credenciales al backend, valida la respuesta:
+     * - Redirige a la pantalla de verificación 2FA si el sistema lo solicita.
+     * - Guarda los tokens en sesión y redirige al dashboard/home si es exitoso.
+     */
     const handleSubmit = async (e) => {
-
-        e.preventDefault();// Evita que la página se recargue
+        e.preventDefault();
+        setErrorMsg("");
 
         try {
-            // Llama al servicio de login enviando los datos del formulario
             const data = await login(form);
 
-            // Guarda el token en sessionStorage
-            sessionStorage.setItem("token", data.token);
+            // Si el backend indica que debe pasar por 2FA,
+            // se redirige a la pantalla para verificar el código
+            if (data.requires2FA) {
+                navigate("/verificar-2fa", {
+                    state: {
+                        userId: data.userId,
+                        expiresAt: data.expiresAt
+                    }
+                });
+                return;
+            }
 
-            // Guarda los datos del usuario
+            // Este bloque queda por seguridad, por si luego reutilizas el login
+            if (data.token && data.usuario) {
+                sessionStorage.setItem("token", data.token);
+                sessionStorage.setItem("user", JSON.stringify(data.usuario));
+                navigate("/home");
+                return;
+            }
+
+            setErrorMsg("No se pudo completar el inicio de sesión");
+        } catch (error) {
+            setErrorMsg(error.response?.data?.message || "Error al iniciar sesión");
+        }
+    };
+
+    /**
+     * Maneja la respuesta exitosa del botón de inicio de sesión de Google
+     * Envía el token de Google al backend para validar al usuario
+     * Si la cuenta es nueva, redirige a la pantalla de registro para completar datos faltantes
+     */
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setGoogleErrorMsg("");
+        try {
+            const data = await googleAuth({
+                credential: credentialResponse.credential
+            });
+
+            if (data.requiresCedula) {
+                setGoogleErrorMsg("Esta cuenta aún no está completa. Debes terminar el registro con Google desde la pantalla de registro.");
+                setTimeout(() => {
+                    navigate("/register");
+                }, 3500);
+                return;
+            }
+
+            sessionStorage.setItem("token", data.token);
             sessionStorage.setItem("user", JSON.stringify(data.user));
 
-            alert("¡Login correcto!");
-
-            // Redirige al Home
-            navigate("/Home");
+            navigate("/home");
         } catch (error) {
-            alert(error.response?.data?.message || "Error al iniciar sesión");
+            setGoogleErrorMsg(error.response?.data?.message || "Error al iniciar con Google");
         }
     };
 
@@ -97,15 +141,11 @@ function Login() {
                             />
                         </div>
 
-                        <p className="text-center text-sm text-slate-600">
-                            ¿No tienes una cuenta?{" "}
-                            <Link
-                                to="/register"
-                                className="font-semibold text-blue-600 hover:underline"
-                            >
-                                Regístrate aquí
-                            </Link>
-                        </p>
+                        {errorMsg && (
+                            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                                {errorMsg}
+                            </div>
+                        )}
 
                         <button
                             type="submit"
@@ -114,6 +154,35 @@ function Login() {
                             Entrar al sistema
                         </button>
                     </form>
+
+                    <div className="my-6 flex items-center">
+                        <div className="h-px flex-1 bg-slate-300"></div>
+                        <span className="px-4 text-sm text-slate-500">o</span>
+                        <div className="h-px flex-1 bg-slate-300"></div>
+                    </div>
+
+                    {googleErrorMsg && (
+                        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-center text-red-600">
+                            {googleErrorMsg}
+                        </div>
+                    )}
+
+                    <div className="flex justify-center">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={() => setGoogleErrorMsg("Error al iniciar con Google")}
+                        />
+                    </div>
+
+                    <p className="mt-6 text-center text-sm text-slate-600">
+                        ¿No tienes una cuenta?{" "}
+                        <Link
+                            to="/register"
+                            className="font-semibold text-blue-600 hover:underline"
+                        >
+                            Regístrate aquí
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>

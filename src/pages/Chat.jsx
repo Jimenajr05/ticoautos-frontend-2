@@ -17,50 +17,118 @@ import {
   deleteChatConversation,
 } from "../services/questionService";
 
-// Componente principal del chat
+// OpenRouter AI para validar mensajes del chat
+import { validarMensajeChatAI } from "../services/chatAIService";
+
+// Obtiene el id del usuario desde el token JWT
+const obtenerUsuarioIdDesdeToken = () => {
+  const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+
+  if (!token) return null;
+
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.id || payload._id || null;
+  } catch (error) {
+    return null;
+  }
+};
+
 function Chat() {
-
-  // Obtiene los parámetros de la URL
   const [searchParams] = useSearchParams();
-
-  // Hook para navegar entre páginas
   const navigate = useNavigate();
 
-  // Obtiene el id del vehículo desde la URL
   const vehicleId = searchParams.get("vehicleId");
+  const rawAskedById = searchParams.get("askedBy");
 
-  // Obtiene el id del usuario que inició la conversación
-  const askedById = searchParams.get("askedBy");
+  const userData =
+    sessionStorage.getItem("user") ||
+    sessionStorage.getItem("usuario") ||
+    localStorage.getItem("user") ||
+    localStorage.getItem("usuario");
 
-  // Estado para guardar el vehículo actual
-  const [vehicle, setVehicle] = useState(null);
-
-  // Estado para guardar la conversación actual
-  const [conversation, setConversation] = useState([]);
-
-  // Estado para guardar todos los chats del usuario
-  const [allChats, setAllChats] = useState([]);
-
-  // Estado para la nueva pregunta
-  const [questionText, setQuestionText] = useState("");
-
-  // Estado para guardar respuestas escritas, usando el id de la pregunta como clave
-  const [answerTexts, setAnswerTexts] = useState({});
-
-  // Estado de carga
-  const [loading, setLoading] = useState(true);
-
-  // Obtiene los datos del usuario guardados en sesión
-  const userData = sessionStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
 
-  // Obtiene el token guardado en sesión
-  const token = sessionStorage.getItem("token");
+  const token = sessionStorage.getItem("token") || localStorage.getItem("token");
 
-  // Carga la conversación de un vehículo específico
+  const currentUserId =
+    user?._id || user?.id || user?.usuarioId || obtenerUsuarioIdDesdeToken();
+
+  const askedById =
+    rawAskedById &&
+    rawAskedById !== "undefined" &&
+    rawAskedById !== "null"
+      ? rawAskedById
+      : currentUserId;
+
+  const chatBlockKey =
+    vehicleId && askedById ? `chat-bloqueado-${vehicleId}-${askedById}` : null;
+
+  const [vehicle, setVehicle] = useState(null);
+  const [conversation, setConversation] = useState([]);
+  const [allChats, setAllChats] = useState([]);
+  const [questionText, setQuestionText] = useState("");
+  const [answerTexts, setAnswerTexts] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  // Estado para mostrar mensajes dentro del bloque, sin alerts
+  const [chatNotice, setChatNotice] = useState(null);
+
+  // Estado para bloquear el chat si comparte información personal
+  const [chatBlocked, setChatBlocked] = useState(false);
+
+  // Estado para evitar doble envío
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Mensajes para respuestas del dueño
+  const [answerNotices, setAnswerNotices] = useState({});
+
+  // Estado para el cuadro de eliminación de chat
+  const [chatToDelete, setChatToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!chatBlockKey) return;
+
+    const savedBlock = sessionStorage.getItem(chatBlockKey);
+
+    if (savedBlock) {
+      const data = JSON.parse(savedBlock);
+      setChatBlocked(true);
+      setChatNotice({
+        type: "error",
+        text:
+          data.razon ||
+          "Este chat fue bloqueado porque se compartió información personal.",
+      });
+    } else {
+      setChatBlocked(false);
+      setChatNotice(null);
+    }
+  }, [chatBlockKey]);
+
+  const bloquearChat = (razon) => {
+    const mensaje =
+      razon || "El mensaje contiene información personal y el chat fue bloqueado.";
+
+    setChatBlocked(true);
+    setChatNotice({
+      type: "error",
+      text: mensaje,
+    });
+
+    if (chatBlockKey) {
+      sessionStorage.setItem(
+        chatBlockKey,
+        JSON.stringify({
+          bloqueado: true,
+          razon: mensaje,
+        })
+      );
+    }
+  };
+
   const loadConversationByVehicle = async () => {
     try {
-      // Verifica que existan los parámetros necesarios
       if (!vehicleId || !askedById) {
         console.warn("Faltan vehicleId o askedById para cargar la conversación.");
         setConversation([]);
@@ -70,24 +138,21 @@ function Chat() {
 
       setLoading(true);
 
-      // Obtiene los datos del vehículo
       const vehicleData = await getVehicleById(vehicleId);
       const currentVehicle = vehicleData.data || null;
       setVehicle(currentVehicle);
 
       try {
-        // Obtiene la conversación del vehículo con ese usuario
         const conversationData = await getVehicleConversation(vehicleId, askedById);
         let chats = conversationData.data || [];
 
-        // Filtra los mensajes para que solo sean de ese usuario
         chats = chats.filter((item) => {
           const currentAskedById =
             item.askedBy?._id || item.askedBy || item.user?._id || item.user;
+
           return currentAskedById === askedById;
         });
 
-        // Ordena la conversación de más antigua a más reciente
         chats.sort(
           (a, b) =>
             new Date(a.questionDate || a.createdAt) -
@@ -111,12 +176,10 @@ function Chat() {
     }
   };
 
-  // Carga todos los chats del usuario
   const loadAllChats = async () => {
     try {
       setLoading(true);
 
-      // Obtiene las preguntas hechas por el usuario y las preguntas recibidas en sus vehículos
       const [myQuestionsData, myVehicleQuestionsData] = await Promise.all([
         getMyQuestions(),
         getMyVehicleQuestions(),
@@ -126,7 +189,6 @@ function Chat() {
       const received = myVehicleQuestionsData.data || [];
       const merged = [...received, ...sent];
 
-      // Mapa para agrupar conversaciones por vehículo + usuario
       const groupedMap = new Map();
 
       merged.forEach((item) => {
@@ -139,11 +201,9 @@ function Chat() {
         const key = `${currentVehicleId}-${currentAskedById}`;
         const currentDate = new Date(item.questionDate || item.createdAt);
 
-        // Si no existe la conversación, la agrega
         if (!groupedMap.has(key)) {
           groupedMap.set(key, item);
         } else {
-          // Si ya existe, deja el mensaje más reciente
           const existing = groupedMap.get(key);
           const existingDate = new Date(existing.questionDate || existing.createdAt);
 
@@ -153,7 +213,6 @@ function Chat() {
         }
       });
 
-      // Convierte el mapa en arreglo y lo ordena de más reciente a más antiguo
       const result = Array.from(groupedMap.values()).sort(
         (a, b) =>
           new Date(b.questionDate || b.createdAt) -
@@ -169,110 +228,239 @@ function Chat() {
     }
   };
 
-
-  // Se ejecuta al cargar el componente o cuando cambian parámetros importantes
   useEffect(() => {
-
-    // Si no hay token, redirige al login
     if (!token) {
-      alert("Debes iniciar sesión para ver tus chats.");
       navigate("/login");
       return;
     }
 
-    // Si hay vehicleId y askedById, carga una conversación específica
+    if (
+      vehicleId &&
+      currentUserId &&
+      (!rawAskedById ||
+        rawAskedById === "undefined" ||
+        rawAskedById === "null")
+    ) {
+      navigate(`/chat?vehicleId=${vehicleId}&askedBy=${currentUserId}`, {
+        replace: true,
+      });
+      return;
+    }
+
     if (vehicleId && askedById) {
       loadConversationByVehicle();
     } else {
-      // Si no, carga la lista general de chats
       loadAllChats();
     }
-  }, [vehicleId, askedById, navigate, token]);
+  }, [vehicleId, rawAskedById, askedById, currentUserId, navigate, token]);
 
-  // Envía una nueva pregunta
   const handleSendQuestion = async () => {
+    setChatNotice(null);
 
-    // Verifica que exista el vehículo
-    if (!vehicleId) {
-      alert("No se encontró el vehículo para enviar la pregunta.");
+    if (chatBlocked) {
+      setChatNotice({
+        type: "error",
+        text: "Este chat está bloqueado. No puedes enviar más mensajes.",
+      });
       return;
     }
 
-    // Verifica que el mensaje no esté vacío
+    if (!vehicleId) {
+      setChatNotice({
+        type: "error",
+        text: "No se encontró el vehículo para enviar el mensaje.",
+      });
+      return;
+    }
+
+    if (!currentUserId) {
+      setChatNotice({
+        type: "error",
+        text: "Debes iniciar sesión para enviar mensajes.",
+      });
+      return;
+    }
+
     if (!questionText.trim()) {
-      alert("La pregunta no puede estar vacía.");
+      setChatNotice({
+        type: "warning",
+        text: "El mensaje no puede estar vacío.",
+      });
       return;
     }
 
     try {
-      // Crea la pregunta
+      setSendingMessage(true);
+
+      const validacion = await validarMensajeChatAI(questionText);
+
+      if (!validacion.permitido) {
+        bloquearChat(validacion.razon || "El mensaje no fue permitido.");
+        return;
+      }
+
       await createQuestion(vehicleId, questionText);
-      // Limpia el campo
+
       setQuestionText("");
-      // Recarga la conversación
+
+      setChatNotice({
+        type: "success",
+        text: "Mensaje enviado correctamente.",
+      });
+
+      if (!rawAskedById || rawAskedById === "undefined" || rawAskedById === "null") {
+        navigate(`/chat?vehicleId=${vehicleId}&askedBy=${currentUserId}`, {
+          replace: true,
+        });
+        return;
+      }
+
       await loadConversationByVehicle();
     } catch (error) {
-      alert(error.response?.data?.message || "Error al enviar pregunta.");
+      if (error.response?.status === 403) {
+        bloquearChat(
+          error.response?.data?.razon ||
+            error.response?.data?.mensaje ||
+            "El mensaje no fue permitido."
+        );
+        return;
+      }
+
+      setChatNotice({
+        type: "error",
+        text: error.response?.data?.message || "Error al enviar el mensaje.",
+      });
+    } finally {
+      setSendingMessage(false);
     }
   };
 
-  // Envía una respuesta a una pregunta
   const handleSendAnswer = async (questionId, fromList = false) => {
     const answer = answerTexts[questionId];
 
-    // Verifica que la respuesta no esté vacía
+    setAnswerNotices((prev) => ({
+      ...prev,
+      [questionId]: null,
+    }));
+
+    if (chatBlocked) {
+      setAnswerNotices((prev) => ({
+        ...prev,
+        [questionId]: {
+          type: "error",
+          text: "Este chat está bloqueado. No puedes enviar más mensajes.",
+        },
+      }));
+      return;
+    }
+
     if (!answer || !answer.trim()) {
-      alert("La respuesta no puede estar vacía.");
+      setAnswerNotices((prev) => ({
+        ...prev,
+        [questionId]: {
+          type: "warning",
+          text: "La respuesta no puede estar vacía.",
+        },
+      }));
       return;
     }
 
     try {
-      // Envía la respuesta al backend
+      const validacion = await validarMensajeChatAI(answer);
+
+      if (!validacion.permitido) {
+        bloquearChat(validacion.razon || "El mensaje no fue permitido.");
+
+        setAnswerNotices((prev) => ({
+          ...prev,
+          [questionId]: {
+            type: "error",
+            text: validacion.razon || "El mensaje no fue permitido.",
+          },
+        }));
+
+        return;
+      }
+
       await answerQuestion(questionId, answer);
 
-      // Limpia el campo de texto de esa respuesta
       setAnswerTexts((prev) => ({
         ...prev,
         [questionId]: "",
       }));
 
-      // Recarga según el contexto
+      setAnswerNotices((prev) => ({
+        ...prev,
+        [questionId]: {
+          type: "success",
+          text: "Respuesta enviada correctamente.",
+        },
+      }));
+
       if (fromList) {
         await loadAllChats();
       } else {
         await loadConversationByVehicle();
       }
     } catch (error) {
-      alert(error.response?.data?.message || "Error al responder.");
+      if (error.response?.status === 403) {
+        const razon =
+          error.response?.data?.razon ||
+          error.response?.data?.mensaje ||
+          "El mensaje no fue permitido.";
+
+        bloquearChat(razon);
+
+        setAnswerNotices((prev) => ({
+          ...prev,
+          [questionId]: {
+            type: "error",
+            text: razon,
+          },
+        }));
+
+        return;
+      }
+
+      setAnswerNotices((prev) => ({
+        ...prev,
+        [questionId]: {
+          type: "error",
+          text: error.response?.data?.message || "Error al responder.",
+        },
+      }));
     }
   };
 
-  // Elimina una conversación completa
-  const handleDeleteChat = async (vehicleIdToDelete, askedByIdToDelete) => {
-
-    // Verifica que existan los datos necesarios
+  const handleDeleteChat = (vehicleIdToDelete, askedByIdToDelete) => {
     if (!vehicleIdToDelete || !askedByIdToDelete) {
-      alert("No se pudo eliminar el chat porque faltan datos.");
+      setChatNotice({
+        type: "error",
+        text: "No se pudo eliminar el chat porque faltan datos.",
+      });
       return;
     }
+    setChatToDelete({ vehicleId: vehicleIdToDelete, askedBy: askedByIdToDelete });
+  };
 
-    // Confirmación antes de eliminar
-    const confirmDelete = window.confirm(
-      "¿Seguro que deseas eliminar este chat y todo su historial?"
-    );
-
-    if (!confirmDelete) return;
+  const executeDeleteChat = async () => {
+    if (!chatToDelete) return;
 
     try {
-      // Elimina la conversación
-      await deleteChatConversation(vehicleIdToDelete, askedByIdToDelete);
+      await deleteChatConversation(chatToDelete.vehicleId, chatToDelete.askedBy);
 
-      // Si estaba dentro de una conversación específica, vuelve a la lista
+      if (chatBlockKey) {
+        sessionStorage.removeItem(chatBlockKey);
+      }
+
+      const vehicleIdToDelete = chatToDelete.vehicleId;
+      const askedByIdToDelete = chatToDelete.askedBy;
+
+      setChatToDelete(null);
+
       if (vehicleId && askedById) {
         navigate("/chat");
       } else {
-
-        // Si está en la lista, la actualiza localmente
         setAllChats((prev) =>
           prev.filter((item) => {
             const currentVehicleId = item.vehicle?._id || item.vehicle;
@@ -286,23 +474,73 @@ function Chat() {
           })
         );
       }
-
-      alert("Chat eliminado correctamente.");
     } catch (error) {
       console.error("Error al eliminar chat:", error);
-      alert(error.response?.data?.message || "Error al eliminar el chat.");
+      setChatNotice({
+        type: "error",
+        text: error.response?.data?.message || "Error al eliminar el chat.",
+      });
+      setChatToDelete(null);
     }
   };
 
-  // Vista mientras carga
+  const NoticeBox = ({ notice }) => {
+    if (!notice) return null;
+
+    const styles = {
+      error: "border-red-200 bg-red-50 text-red-700",
+      warning: "border-amber-200 bg-amber-50 text-amber-700",
+      success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    };
+
+    return (
+      <div
+        className={`mt-3 rounded-xl border px-4 py-3 text-sm font-medium ${
+          styles[notice.type] || styles.warning
+        }`}
+      >
+        {notice.text}
+      </div>
+    );
+  };
+
+  const DeleteChatModal = () => {
+    if (!chatToDelete) return null;
+
+    return (
+      <div className="fixed top-6 right-6 z-50 w-96 rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200 animate-fade-in-down">
+        <h3 className="mb-2 text-lg font-bold text-slate-900 border-b border-slate-100 pb-2">
+          Eliminar chat
+        </h3>
+        <p className="mb-5 text-sm text-slate-600 mt-2">
+          ¿Seguro que deseas eliminar este chat y todo su historial?
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setChatToDelete(null)}
+            className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={executeDeleteChat}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-red-200 transition hover:bg-red-700"
+          >
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <div className="p-10 text-center">Cargando chat...</div>;
   }
 
-  // Vista de lista general de chats
   if (!vehicleId || !askedById) {
     return (
-      <div className="min-h-screen bg-slate-100 px-6 py-10">
+      <div className="min-h-screen bg-slate-100 px-6 py-10 relative">
+        <DeleteChatModal />
         <div className="mx-auto max-w-5xl rounded-3xl bg-white p-8 shadow-lg">
           <h1 className="mb-6 text-3xl font-bold text-slate-900">
             Chat con usuarios
@@ -317,20 +555,17 @@ function Chat() {
                 const currentAskedById =
                   item.askedBy?._id || item.askedBy || item.user?._id || item.user;
 
-                // Obtiene el nombre del vehículo
                 const vehicleTitle =
                   item.vehicle?.title ||
                   `${item.vehicle?.brand || ""} ${item.vehicle?.model || ""}`.trim() ||
                   "Vehículo";
 
-                // Obtiene el nombre del usuario
                 const userName = item.askedBy
                   ? `${item.askedBy.name || ""} ${item.askedBy.lastName || ""}`.trim()
                   : item.user
                   ? `${item.user.name || ""} ${item.user.lastName || ""}`.trim()
                   : "No disponible";
 
-                // Indica si hay respuesta pendiente
                 const hasPendingAnswer = !item.answer;
 
                 return (
@@ -381,6 +616,8 @@ function Chat() {
                               className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
                             />
 
+                            <NoticeBox notice={answerNotices[item._id]} />
+
                             <button
                               onClick={() => handleSendAnswer(item._id, true)}
                               className="mt-3 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"
@@ -395,10 +632,7 @@ function Chat() {
                     <div className="mt-4 flex flex-wrap gap-3">
                       <button
                         onClick={() => {
-                          if (!currentVehicleId || !currentAskedById) {
-                            alert("No se puede abrir esta conversación.");
-                            return;
-                          }
+                          if (!currentVehicleId || !currentAskedById) return;
 
                           navigate(
                             `/chat?vehicleId=${currentVehicleId}&askedBy=${currentAskedById}`
@@ -428,7 +662,6 @@ function Chat() {
     );
   }
 
-  // Si no se encontró el vehículo relacionado
   if (!vehicle) {
     return (
       <div className="p-10 text-center text-slate-600">
@@ -437,24 +670,22 @@ function Chat() {
     );
   }
 
-  // Obtiene el id del propietario del vehículo
-  const ownerId = vehicle.user?._id || vehicle.usuario?._id || vehicle.user || vehicle.usuario;
+  const ownerId =
+    vehicle.user?._id || vehicle.usuario?._id || vehicle.user || vehicle.usuario;
 
-  // Verifica si el usuario actual es el dueño
-  const isOwner = user?._id === ownerId;
+  const isOwner = currentUserId === ownerId;
 
-  // Obtiene el último mensaje de la conversación
   const lastMessage =
     conversation.length > 0 ? conversation[conversation.length - 1] : null;
 
-  // El comprador puede preguntar solo si no es dueño y la última pregunta ya fue respondida
   const canAsk = !isOwner && (!lastMessage || !!lastMessage.answer);
-
-  // El dueño puede responder si el último mensaje no tiene respuesta
   const canAnswer = isOwner && lastMessage && !lastMessage.answer;
 
+  const inputDisabled = !canAsk || chatBlocked || sendingMessage;
+
   return (
-    <div className="min-h-screen bg-slate-100 px-6 py-10">
+    <div className="min-h-screen bg-slate-100 px-6 py-10 relative">
+      <DeleteChatModal />
       <div className="mx-auto max-w-5xl rounded-3xl bg-white p-8 shadow-lg">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -479,19 +710,28 @@ function Chat() {
           </button>
         </div>
 
-         {/* Caja para enviar pregunta si el usuario no es dueño */}
         {!isOwner && (
           <div className="mb-8">
             <textarea
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
-              placeholder="Escribe tu mensaje al vendedor"
+              placeholder={
+                chatBlocked
+                  ? "Este chat fue bloqueado por compartir información personal"
+                  : "Escribe tu mensaje al vendedor"
+              }
               rows="4"
-              disabled={!canAsk}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+              disabled={inputDisabled}
+              className={`w-full rounded-xl border px-4 py-3 outline-none ${
+                inputDisabled
+                  ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                  : "border-slate-300 focus:border-blue-500"
+              }`}
             />
 
-            {!canAsk && (
+            <NoticeBox notice={chatNotice} />
+
+            {!canAsk && !chatBlocked && (
               <p className="mt-2 text-sm text-amber-600">
                 Debes esperar la respuesta del vendedor antes de enviar otro
                 mensaje.
@@ -500,14 +740,18 @@ function Chat() {
 
             <button
               onClick={handleSendQuestion}
-              disabled={!canAsk}
+              disabled={inputDisabled}
               className={`mt-4 rounded-xl px-5 py-3 font-semibold text-white ${
-                canAsk
-                  ? "bg-blue-600 hover:bg-blue-700"
-                  : "cursor-not-allowed bg-slate-400"
+                inputDisabled
+                  ? "cursor-not-allowed bg-slate-400"
+                  : "bg-blue-600 hover:bg-blue-700"
               }`}
             >
-              Enviar mensaje
+              {chatBlocked
+                ? "Chat bloqueado"
+                : sendingMessage
+                ? "Validando..."
+                : "Enviar mensaje"}
             </button>
           </div>
         )}
@@ -561,16 +805,32 @@ function Chat() {
                           [item._id]: e.target.value,
                         }))
                       }
-                      placeholder="Escribe tu respuesta"
+                      placeholder={
+                        chatBlocked
+                          ? "Este chat fue bloqueado por compartir información personal"
+                          : "Escribe tu respuesta"
+                      }
                       rows="3"
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                      disabled={chatBlocked}
+                      className={`w-full rounded-xl border px-4 py-3 outline-none ${
+                        chatBlocked
+                          ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                          : "border-slate-300 focus:border-blue-500"
+                      }`}
                     />
+
+                    <NoticeBox notice={answerNotices[item._id] || chatNotice} />
 
                     <button
                       onClick={() => handleSendAnswer(item._id)}
-                      className="mt-3 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white hover:bg-emerald-700"
+                      disabled={chatBlocked}
+                      className={`mt-3 rounded-xl px-5 py-3 font-semibold text-white ${
+                        chatBlocked
+                          ? "cursor-not-allowed bg-slate-400"
+                          : "bg-emerald-600 hover:bg-emerald-700"
+                      }`}
                     >
-                      Responder
+                      {chatBlocked ? "Chat bloqueado" : "Responder"}
                     </button>
                   </div>
                 ) : (

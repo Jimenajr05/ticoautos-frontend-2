@@ -5,6 +5,7 @@ function VehicleForm({
   onChange,
   onSubmit,
   onCancel,
+  errorMsg,
 }) {
   const inputClass =
     "rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white";
@@ -99,6 +100,12 @@ function VehicleForm({
           className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white"
         />
 
+        {errorMsg && (
+          <div className="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600">
+            {errorMsg}
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3 pt-2">
           <button
             type="submit"
@@ -107,15 +114,13 @@ function VehicleForm({
             {editingVehicleId ? "Actualizar vehículo" : "Crear vehículo"}
           </button>
 
-          {editingVehicleId && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-2xl bg-slate-200 px-6 py-3 font-semibold text-slate-800 transition hover:bg-slate-300"
-            >
-              Cancelar
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-2xl bg-slate-200 px-6 py-3 font-semibold text-slate-800 transition hover:bg-slate-300"
+          >
+            Cancelar
+          </button>
         </div>
       </form>
     </div>
