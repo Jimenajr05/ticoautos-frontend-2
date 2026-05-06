@@ -132,3 +132,7 @@ La aplicación utiliza `sessionStorage` para guardar el token y los datos de usu
 
 - María Paz Ugalde Araya
 - María Jimena Jara Rojas
+
+# TicoAuto
+
+![Logo TicoAuto](./images/logo.png)
