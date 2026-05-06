@@ -102,7 +102,7 @@ function Verify2FA() {
             <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-slate-200">
                 <div className="mb-6 text-center">
                     <h2 className="text-3xl font-bold text-slate-900">
-                        Verificación 2FA
+                        Verificación De Cuenta
                     </h2>
                     <p className="mt-2 text-slate-500">
                         Ingresa el código enviado por mensaje de texto
